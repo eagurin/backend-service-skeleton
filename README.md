@@ -2,34 +2,46 @@
 
 Этот проект представляет собой финансовый сервис, разработанный с использованием Aiohttp, который предоставляет API для управления пользователями и их транзакциями. Основные функции включают создание пользователей, выполнение транзакций (депозиты и снятия) и получение информации о пользователях и транзакциях.
 
-## Структура проекта
+### Project Structure (Under Development)
 
-```bash
-.
-├── app
-│   ├── __init__.py
-│   ├── api
-│   │   ├── __init__.py
-│   │   ├── routes.py
-│   ├── app.py
-│   ├── cleanups
-│   │   ├── __init__.py
-│   │   ├── database.py
-│   ├── config.py
-│   ├── middleware.py
-│   ├── models
-│   │   ├── __init__.py
-│   │   ├── crud.py
-│   │   ├── serializers.py
-│   ├── startups
-│   │   ├── __init__.py
-│   │   ├── database.py
-│   ├── __main__.py
-├── tests
-│   ├── __init__.py
-│   ├── test_api.py
-├── .env
-├── README.md
+```plaintext
+backend-service-skeleton/
+    app/
+        config.py
+        __init__.py
+        __main__.py
+        api/
+            __init__.py
+            routes.py
+        models/
+            __init__.py
+            user.py
+            transaction.py
+        schemas/
+            __init__.py
+            user.py
+            transaction.py
+        services/
+            __init__.py
+            user_service.py
+            transaction_service.py
+            messaging_service.py
+            cache_service.py
+        middlewares/
+            __init__.py
+            error_handler.py
+        startups/
+            __init__.py
+            database.py
+            rabbitmq.py
+            redis.py
+            cache.py
+        cleanups/
+            __init__.py
+            database.py
+            rabbitmq.py
+            redis.py
+            cache.py
 ```
 
 ## Запуск проекта

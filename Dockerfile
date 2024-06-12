@@ -58,20 +58,20 @@ WORKDIR $PYSETUP_PATH
 EXPOSE 8000
 
 # Команда для запуска приложения в режиме разработки
-CMD ["poetry", "run", "python", "-m", "aiohttp.web", "-H", "0.0.0.0", "-P", "8000", "app.__main__:create_app_wrapper"]
+CMD ["poetry", "run", "python", "-m", "aiohttp.web", "-H", "0.0.0.0", "-P", "8000", "app.__main__:create_app"]
 
-# # Финальный слой для продакшена
-# FROM python-base AS production
+# Финальный слой для продакшена
+FROM python-base AS production
 
-# # Установка переменных окружения
-# ENV APP_ENV=production
+# Установка переменных окружения
+ENV APP_ENV=production
 
-# # Копирование установленных зависимостей и файлов проекта из слоя сборки
-# COPY --from=builder $POETRY_HOME $POETRY_HOME
-# COPY --from=builder $PYSETUP_PATH $PYSETUP_PATH
+# Копирование установленных зависимостей и файлов проекта из слоя сборки
+COPY --from=builder $POETRY_HOME $POETRY_HOME
+COPY --from=builder $PYSETUP_PATH $PYSETUP_PATH
 
-# # Установка рабочего каталога
-# WORKDIR $PYSETUP_PATH
+# Установка рабочего каталога
+WORKDIR $PYSETUP_PATH
 
-# # Команда для запуска приложения в режиме продакшена
-# CMD ["poetry", "run", "gunicorn", "-b", "0.0.0.0:8000", "app.__main__:create_app_wrapper", "-k", "aiohttp.GunicornWebWorker"]
+# Команда для запуска приложения в режиме продакшена
+CMD ["poetry", "run", "gunicorn", "-b", "0.0.0.0:8000", "app.__main__:create_app", "-k", "aiohttp.GunicornWebWorker"]

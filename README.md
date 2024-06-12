@@ -1,0 +1,145 @@
+# Финансовый сервис на базе Aiohttp
+
+Этот проект представляет собой финансовый сервис, разработанный с использованием Aiohttp, который предоставляет API для управления пользователями и их транзакциями. Основные функции включают создание пользователей, выполнение транзакций (депозиты и снятия) и получение информации о пользователях и транзакциях.
+
+## Структура проекта
+
+```bash
+.
+├── app
+│   ├── __init__.py
+│   ├── api
+│   │   ├── __init__.py
+│   │   ├── routes.py
+│   ├── app.py
+│   ├── cleanups
+│   │   ├── __init__.py
+│   │   ├── database.py
+│   ├── config.py
+│   ├── middleware.py
+│   ├── models
+│   │   ├── __init__.py
+│   │   ├── crud.py
+│   │   ├── serializers.py
+│   ├── startups
+│   │   ├── __init__.py
+│   │   ├── database.py
+│   ├── __main__.py
+├── tests
+│   ├── __init__.py
+│   ├── test_api.py
+├── .env
+├── README.md
+```
+
+## Запуск проекта
+
+### Требования
+
+- Python 3.11+
+- PostgreSQL
+- RabbitMQ
+- Docker
+
+### Установка и настройка
+
+1. Создайте файл `.env` в корне проекта и добавьте следующие переменные окружения:
+
+```env
+DEBUG=True
+HOST=0.0.0.0
+PORT=8000
+DATABASE_URI=postgres://user:password@localhost/dbname
+RABBITMQ_URL=amqp://guest:guest@localhost/
+RABBITMQ_QUEUE=transactions
+```
+
+2. Docker:
+
+```bash
+docker-compose up -d --build
+```
+
+## Гарантия обработки транзакции ровно один раз
+
+Для обеспечения обработки транзакции ровно один раз необходимо использовать механизм транзакций базы данных и очередей сообщений. В данном проекте используется RabbitMQ для обработки транзакций. Основные требования:
+
+- **Использование подтверждений сообщений (message acknowledgments) в RabbitMQ**: Это гарантирует, что сообщение будет удалено из очереди только после успешной обработки.
+- **Обработка транзакций в рамках одной транзакции базы данных и очереди сообщений**: Это гарантирует атомарность операции.
+- **Использование уникальных идентификаторов транзакций для предотвращения повторной обработки**: Все транзакции должны иметь уникальные идентификаторы (UUID), чтобы избежать дублирования.
+
+Пример кода для обработки транзакций с RabbitMQ:
+
+```python
+import asyncio
+
+import aio_pika
+
+connection = await aio_pika.connect_robust(
+    "amqp://guest:guest@127.0.0.1/",
+)
+
+async with connection:
+    routing_key = "test_queue"
+
+    # Transactions conflicts with `publisher_confirms`
+    channel = await connection.channel(publisher_confirms=False)
+
+    # Use transactions with async context manager
+    async with channel.transaction():
+        # Publishing messages but delivery will not be done
+        # before committing this transaction
+        for i in range(10):
+            message = aio_pika.Message(body="Hello #{}".format(i).encode())
+
+            await channel.default_exchange.publish(
+                message, routing_key=routing_key,
+            )
+
+    # Using transactions manually
+    tx = channel.transaction()
+
+    # start transaction manually
+    await tx.select()
+
+    await channel.default_exchange.publish(
+        aio_pika.Message(body="Hello {}".format(routing_key).encode()),
+        routing_key=routing_key,
+    )
+
+    await tx.commit()
+
+    # Using transactions manually
+    tx = channel.transaction()
+
+    # start transaction manually
+    await tx.select()
+
+    await channel.default_exchange.publish(
+        aio_pika.Message(body="Should be rejected".encode()),
+        routing_key=routing_key,
+    )
+
+    await tx.rollback()
+```
+
+## Уведомление других сервисов о транзакциях
+
+Для уведомления других сервисов о транзакциях можно использовать механизмы публикации/подписки (publish/subscribe). Например, при выполнении транзакции публиковать сообщение в RabbitMQ, которое будет обработано другим сервисом (например, рекламным движком). Пример кода.
+
+## Контроль качества работы сервиса
+
+Для контроля качества работы сервиса можно использовать следующие инструменты:
+
+- **Мониторинг и логирование**:
+  - Prometheus и Grafana для мониторинга метрик.
+  - Loguru для логирования.
+
+- **Трассировка**:
+  - Jaeger для распределенной трассировки запросов.
+
+- **Тестирование**:
+  - Pytest для написания юнит-тестов и интеграционных тестов.
+
+- **CI/CD**:
+  - GitHub Actions или GitLab CI для автоматического тестирования и деплоя.

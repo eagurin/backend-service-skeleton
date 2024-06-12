@@ -27,7 +27,9 @@ async def add_transaction(request: web.Request) -> web.Response:
             await user_service.update_user_balance(
                 amount, user_id, transaction_type
             )
-            transaction = await transaction_service.create_transaction(request_json)
+            transaction = await transaction_service.create_transaction(
+                request_json
+            )
             return web.json_response(
                 TransactionSerializer(transaction).serialize(), status=201
             )

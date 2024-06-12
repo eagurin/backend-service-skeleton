@@ -1,102 +1,50 @@
-from datetime import datetime
-
 from aiohttp import web
-from aiohttp.web_request import Request
-from aiohttp.web_response import Response
-from asyncpg import CheckViolationError
+from app.services.user_service import UserService
+from app.services.transaction_service import TransactionService
+from app.schemas.user import UserSerializer
+from app.schemas.transaction import TransactionSerializer
 
-from app.models import TransactionType
-from app.models.crud import TransactionCrud, UserCrud
-from app.models.serializers import TransactionSerializer, UserSerializer
+user_service = UserService()
+transaction_service = TransactionService()
 
-
-async def add_user(request: Request) -> Response:
+async def add_user(request: web.Request) -> web.Response:
     request_json = await request.json()
-    user = await UserCrud().create_user(**request_json)
+    user = await user_service.create_user(**request_json)
     return web.json_response(UserSerializer(user).serialize(), status=201)
 
-
-async def get_user(request: Request) -> Response:
-    user_id = int(request.match_info["id"])
-    timestamp = request.query.get("date")
-    if timestamp:
-        timestamp = datetime.fromisoformat(timestamp)
-    user, user_transactions = await UserCrud().get_user_with_transaction(
-        user_id=user_id, timestamp=timestamp
-    )
-
-    if not user:
-        return web.json_response(status=404)
-
-    balance = None
-    if timestamp:
-        balance = sum(
-            [
-                t.amount
-                if t.type == TransactionType.DEPOSIT
-                else -abs(t.amount)
-                for t in user_transactions
-            ]
-        )
-        balance = "%.2f" % balance
-    serialized = UserSerializer(user).serialize()
-    serialized["balance"] = (
-        balance if balance is not None else serialized["balance"]
-    )
-    return web.json_response(serialized, status=200)
-
-
-async def add_transaction(request: Request) -> Response:
+async def add_transaction(request: web.Request) -> web.Response:
     request_json = await request.json()
     amount = request_json["amount"]
     user_id = request_json["user_id"]
     transaction_type = request_json["type"]
-    async with request.app["db"].transaction() as tx:
-        try:
-            res, _ = await UserCrud().update_user_balance(
-                amount=amount,
-                user_id=user_id,
-                transaction_type=transaction_type,
-            )
-        except CheckViolationError:
-            return web.json_response(status=402)
+    try:
+        await user_service.update_user_balance(amount, user_id, transaction_type)
+    except ValueError as e:
+        return web.json_response({'error': str(e)}, status=402)
 
-        if res != "UPDATE 1":
-            await tx.raise_rollback()
+    transaction = await transaction_service.create_transaction(request_json)
+    return web.json_response(TransactionSerializer(transaction).serialize(), status=201)
 
-        transaction = await TransactionCrud().create_transaction(
-            amount=amount,
-            user_id=user_id,
-            transaction_type=transaction_type,
-            timestamp=request_json["timestamp"],
-            uid=request_json["uid"],
-        )
-        return web.json_response(
-            TransactionSerializer(transaction).serialize(), status=201
-        )
+async def get_user(request: web.Request) -> web.Response:
+    user_id = int(request.match_info["id"])
+    timestamp = request.query.get("date")
+    user, user_transactions = await user_service.get_user_with_transaction(user_id=user_id, timestamp=timestamp)
+    if not user:
+        return web.json_response(status=404)
+    balance = user_service.calculate_balance(user_transactions)
+    serialized = UserSerializer(user).serialize()
+    serialized["balance"] = balance
+    return web.json_response(serialized, status=200)
 
-
-async def get_transaction(request: Request) -> Response:
+async def get_transaction(request: web.Request) -> web.Response:
     transaction_uid = request.match_info["uid"]
-    transaction = await TransactionCrud().get_transaction(
-        transaction_uid=transaction_uid
-    )
+    transaction = await transaction_service.get_transaction(transaction_uid)
     if not transaction:
         return web.json_response(status=404)
-    return web.json_response(
-        TransactionSerializer(transaction).serialize(), status=200
-    )
-
+    return web.json_response(TransactionSerializer(transaction).serialize(), status=200)
 
 def add_routes(app):
     app.router.add_route("GET", r"/v1/user/{id}", get_user, name="get_user")
     app.router.add_route("POST", r"/v1/user", add_user, name="add_user")
-    app.router.add_route(
-        "GET",
-        r"/v1/transaction/{uid}",
-        get_transaction,
-        name="get_transaction",
-    )
-    app.router.add_route(
-        "POST", r"/v1/transaction", add_transaction, name="add_transaction"
-    )
+    app.router.add_route("GET", r"/v1/transaction/{uid}", get_transaction, name="get_transaction")
+    app.router.add_route("POST", r"/v1/transaction", add_transaction, name="add_transaction")

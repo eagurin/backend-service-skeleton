@@ -7,7 +7,7 @@ from sqlalchemy import or_
 from app.models import User, Transaction, TransactionType
 
 
-class CrudMixin:
+class CrudBase:
     @staticmethod
     def make_float(amount: float, transaction_type: str) -> float:
         return (
@@ -25,7 +25,7 @@ class CrudMixin:
         return timestamp
 
 
-class UserCrud(CrudMixin):
+class UserCrud(CrudBase):
     @staticmethod
     async def get_user(user_id: int):
         return await User.get(user_id)
@@ -74,7 +74,7 @@ class UserCrud(CrudMixin):
         return user, transactions
 
 
-class TransactionCrud(CrudMixin):
+class TransactionCrud(CrudBase):
     async def create_transaction(
         self,
         user_id: int,

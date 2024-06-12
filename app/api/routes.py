@@ -4,6 +4,7 @@ from app.schemas.transaction import TransactionSerializer
 from app.schemas.user import UserSerializer
 from app.services.transaction_service import TransactionService
 from app.services.user_service import UserService
+from app.utils.time_utils import InvalidTimestampError
 
 user_service = UserService()
 transaction_service = TransactionService()
@@ -20,17 +21,25 @@ async def add_transaction(request: web.Request) -> web.Response:
     amount = request_json["amount"]
     user_id = request_json["user_id"]
     transaction_type = request_json["type"]
-    try:
-        await user_service.update_user_balance(
-            amount, user_id, transaction_type
-        )
-    except ValueError as e:
-        return web.json_response({"error": str(e)}, status=402)
 
-    transaction = await transaction_service.create_transaction(request_json)
-    return web.json_response(
-        TransactionSerializer(transaction).serialize(), status=201
-    )
+    async with request.app["db"].transaction() as tx:
+        try:
+            await user_service.update_user_balance(
+                amount, user_id, transaction_type
+            )
+            transaction = await transaction_service.create_transaction(request_json)
+            return web.json_response(
+                TransactionSerializer(transaction).serialize(), status=201
+            )
+        except ValueError as e:
+            await tx.raise_rollback()
+            return web.json_response({"error": str(e)}, status=402)
+        except InvalidTimestampError as e:
+            await tx.raise_rollback()
+            return web.json_response({"error": str(e)}, status=400)
+        except Exception as e:
+            await tx.raise_rollback()
+            return web.json_response({"error": str(e)}, status=500)
 
 
 async def get_user(request: web.Request) -> web.Response:

@@ -40,7 +40,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        docker-compose exec web python -m pip install --upgrade pip
+        docker-compose exec web pip install --upgrade pip
         docker-compose exec web pip install poetry
         docker-compose exec web poetry install
         docker-compose exec web poetry run alembic upgrade head

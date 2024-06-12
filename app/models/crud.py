@@ -1,10 +1,10 @@
 import datetime
 import uuid
-from typing import Union, Optional, List, Tuple
+from typing import List, Optional, Tuple, Union
 
 from sqlalchemy import or_
 
-from app.models import User, Transaction, TransactionType
+from app.models import Transaction, TransactionType, User
 
 
 class CrudBase:
@@ -37,7 +37,9 @@ class UserCrud(CrudBase):
     async def update_user_balance(
         self, amount: float, user_id: int, transaction_type: str
     ) -> tuple:
-        amount = self.make_float(amount=amount, transaction_type=transaction_type)
+        amount = self.make_float(
+            amount=amount, transaction_type=transaction_type
+        )
         return (
             await User.update.values(balance=User.balance + amount)
             .where(User.id == user_id)
@@ -52,7 +54,9 @@ class UserCrud(CrudBase):
             User.join(Transaction, isouter=True)
             .select()
             .where(User.id == user_id)
-            .where(or_(Transaction.timestamp < timestamp, Transaction.uid == None))
+            .where(
+                or_(Transaction.timestamp < timestamp, Transaction.uid == None)
+            )
         ).gino.all()
         if not txns:
             return None, []
@@ -69,7 +73,8 @@ class UserCrud(CrudBase):
                 timestamp=t.timestamp,
                 user_id=t.user_id,
             )
-            for t in txns if t.uid
+            for t in txns
+            if t.uid
         ]
         return user, transactions
 

@@ -6,8 +6,8 @@ from aiohttp.web_response import Response
 from asyncpg import CheckViolationError
 
 from app.models import TransactionType
-from app.models.crud import UserCrud, TransactionCrud
-from app.models.serializers import UserSerializer, TransactionSerializer
+from app.models.crud import TransactionCrud, UserCrud
+from app.models.serializers import TransactionSerializer, UserSerializer
 
 
 async def add_user(request: Request) -> Response:
@@ -32,13 +32,17 @@ async def get_user(request: Request) -> Response:
     if timestamp:
         balance = sum(
             [
-                t.amount if t.type == TransactionType.DEPOSIT else -abs(t.amount)
+                t.amount
+                if t.type == TransactionType.DEPOSIT
+                else -abs(t.amount)
                 for t in user_transactions
             ]
         )
         balance = "%.2f" % balance
     serialized = UserSerializer(user).serialize()
-    serialized["balance"] = balance if balance is not None else serialized["balance"]
+    serialized["balance"] = (
+        balance if balance is not None else serialized["balance"]
+    )
     return web.json_response(serialized, status=200)
 
 
@@ -67,7 +71,9 @@ async def add_transaction(request: Request) -> Response:
             timestamp=request_json["timestamp"],
             uid=request_json["uid"],
         )
-        return web.json_response(TransactionSerializer(transaction).serialize(), status=201)
+        return web.json_response(
+            TransactionSerializer(transaction).serialize(), status=201
+        )
 
 
 async def get_transaction(request: Request) -> Response:
@@ -77,14 +83,19 @@ async def get_transaction(request: Request) -> Response:
     )
     if not transaction:
         return web.json_response(status=404)
-    return web.json_response(TransactionSerializer(transaction).serialize(), status=200)
+    return web.json_response(
+        TransactionSerializer(transaction).serialize(), status=200
+    )
 
 
 def add_routes(app):
     app.router.add_route("GET", r"/v1/user/{id}", get_user, name="get_user")
     app.router.add_route("POST", r"/v1/user", add_user, name="add_user")
     app.router.add_route(
-        "GET", r"/v1/transaction/{uid}", get_transaction, name="get_transaction"
+        "GET",
+        r"/v1/transaction/{uid}",
+        get_transaction,
+        name="get_transaction",
     )
     app.router.add_route(
         "POST", r"/v1/transaction", add_transaction, name="add_transaction"

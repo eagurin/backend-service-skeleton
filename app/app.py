@@ -1,17 +1,17 @@
 from aiohttp import web
 from gino import Gino
 
-
 app = web.Application()
 
 db = Gino()
 
 
 def init_app() -> web.Application:
-    from .config import Config
-    from .cleanups import close_db
-    from .startups import init_db
     from app.api.routes import add_routes
+
+    from .cleanups import close_db
+    from .config import Config
+    from .startups import init_db
 
     app["config"] = Config
     app["db"] = db

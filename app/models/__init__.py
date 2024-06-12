@@ -1,9 +1,8 @@
+import enum
 import uuid
 
-import enum
-
 import sqlalchemy
-from sqlalchemy import Enum, CheckConstraint
+from sqlalchemy import CheckConstraint, Enum
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.app import db

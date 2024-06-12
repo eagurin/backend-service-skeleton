@@ -26,22 +26,24 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    env:
+      DATABASE_URI: postgres://user:password@localhost/dbname
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up Docker
-      uses: actions/setup-docker@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
       with:
-        dockerfile: docker-compose.ci.yaml
+        python-version: '3.11'
 
-    - name: Build and run containers
-      run: |
-        docker-compose up --build -d
     - name: Install dependencies
       run: |
+        docker-compose exec web python -m pip install --upgrade pip
+        docker-compose exec web pip install poetry
         docker-compose exec web poetry install
+        docker-compose exec web poetry run alembic upgrade head
     - name: Apply database migrations
       run: |
         docker-compose exec web poetry run alembic upgrade head
@@ -57,3 +59,4 @@ jobs:
     - name: Stop and remove containers
       run: |
         docker-compose down
+  

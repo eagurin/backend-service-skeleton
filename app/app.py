@@ -1,8 +1,10 @@
 from aiohttp import web
-from models_schema import api_db as db
+from gino import Gino
+
 
 app = web.Application()
-app['db'] = db
+
+db = Gino()
 
 
 def init_app() -> web.Application:
@@ -11,7 +13,8 @@ def init_app() -> web.Application:
     from .startups import init_db
     from app.api.routes import add_routes
 
-    app['config'] = Config
+    app["config"] = Config
+    app["db"] = db
 
     # Startups
     app.on_startup.append(init_db)

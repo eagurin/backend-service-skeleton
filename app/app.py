@@ -1,12 +1,15 @@
 from aiohttp import web
+
 from app.models import db
+
 
 async def init_app() -> web.Application:
     from app.api.routes import add_routes
+    from app.middlewares.error_handler import error_middleware
+
     from .cleanups import close_db
     from .config import Config
     from .startups import init_db
-    from app.middlewares.error_handler import error_middleware
 
     app = web.Application(middlewares=[error_middleware])
 

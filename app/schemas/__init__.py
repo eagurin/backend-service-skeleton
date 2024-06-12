@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Union
 
-from app.models import User, Transaction
+from app.models import Transaction, User
 
 
 class BaseSerializer:

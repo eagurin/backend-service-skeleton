@@ -1,5 +1,9 @@
-from app.schemas import BaseSerializer
+from pydantic import BaseModel, UUID4
 
+class UserCreate(BaseModel):
+    name: str
 
-class UserSerializer(BaseSerializer):
-    fields = ["balance"]
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    balance: str

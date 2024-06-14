@@ -1,7 +1,11 @@
 from sqlalchemy import CheckConstraint
+import enum
 
-from app.models import db
+from app.app import db
 
+class TransactionType(enum.Enum):
+    WITHDRAW = 1
+    DEPOSIT = 2
 
 class User(db.Model):
     __tablename__ = "users"

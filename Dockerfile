@@ -11,7 +11,7 @@ ENV PYTHONUNBUFFERED=1 \
     POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
     POETRY_NO_INTERACTION=1 \
-    PYSETUP_PATH="/opt/pysetup" \
+    PYSETUP_PATH="/app" \
     VENV_PATH="/opt/pysetup/.venv"
 
 # Добавление Poetry и виртуального окружения в PATH

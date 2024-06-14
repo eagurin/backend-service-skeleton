@@ -1,28 +1,27 @@
 from aiohttp import web
+from loguru import logger
 
-from app.models import db
+from gino import Gino
 
+db = Gino()
 
-async def init_app() -> web.Application:
-    from app.api.routes import add_routes
-    from app.middlewares.error_handler import error_middleware
-
-    from .cleanups import close_db
+async def init_app():
+    from .startups import init_services
     from .config import Config
-    from .startups import init_db
-
-    app = web.Application(middlewares=[error_middleware])
+    from .cleanups import close_services
+    from .middlewares.error_handler import error_middleware
+    from .api import setup_routes
 
     app = web.Application()
 
     app["config"] = Config
-    app["db"] = db
+    app['db'] = db
+    
+    app.on_startup.append(init_services)
+    
+    app.on_cleanup.append(close_services)
+    
+    setup_routes(app)
 
-    # Startups
-    app.on_startup.append(init_db)
-
-    # Cleanups
-    app.on_cleanup.append(close_db)
-    add_routes(app)
-
+    logger.info("Application initialized")
     return app

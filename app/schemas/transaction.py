@@ -1,12 +1,17 @@
-from typing import Any, Dict
+from pydantic import BaseModel, UUID4
+from typing import Optional
+from datetime import datetime
 
-from app.schemas import BaseSerializer
+class TransactionCreate(BaseModel):
+    uid: Optional[UUID4] = None
+    type: str
+    amount: float
+    timestamp: Optional[datetime] = None
+    user_id: int
 
-
-class TransactionSerializer(BaseSerializer):
-    fields = ["amount", "uid", "timestamp"]
-
-    def serialize(self) -> Dict[str, Any]:
-        t_dict = super().serialize()
-        t_dict["type"] = t_dict["type"].name
-        return t_dict
+class TransactionResponse(BaseModel):
+    uid: Optional[UUID4] = None
+    type: str
+    amount: str
+    timestamp: Optional[datetime] = None
+    user_id: int

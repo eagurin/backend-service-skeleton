@@ -1,42 +1,48 @@
-import uuid
-from typing import List, Optional, Union
-
-from app.models.transaction import Transaction
-from app.utils.time_utils import parse_timestamp
-
+from uuid import UUID
+from typing import Union, Optional
+from loguru import logger
+from app.crud import TransactionCrud, UserCrud
+from app.schemas.transaction import TransactionCreate
+from app.models import Transaction
+from app.services.messaging_service import MessagingService
+from aiohttp import web
 
 class TransactionService:
-    async def create_transaction(self, data: dict) -> Transaction:
-        amount = data["amount"]
-        user_id = data["user_id"]
-        transaction_type = data["type"]
-        timestamp = data.get("timestamp")
-        uid = data.get("uid")
+    
+    @staticmethod
+    async def create_transaction(app: web.Application, transaction_create: TransactionCreate) -> Union[Transaction, None]:
+        # Process transaction creation message
+        await MessagingService.process_message(app, transaction_create.dict())
 
-        timestamp = parse_timestamp(timestamp)
-        uid = uid or uuid.uuid4()
+        async with app['db'].transaction() as tx:
+            try:
+                async def transaction_logic(tx):
+                    # Update user balance
+                    await UserCrud().update_user_balance(
+                        tx=tx,
+                        amount=transaction_create.amount,
+                        user_id=transaction_create.user_id,
+                        transaction_type=transaction_create.type,
+                    )
+                    # Create transaction
+                    transaction = await TransactionCrud().create_transaction(
+                        tx=tx,
+                        user_id=transaction_create.user_id,
+                        transaction_type=transaction_create.type,
+                        amount=transaction_create.amount,
+                        timestamp=transaction_create.timestamp,
+                        uid=transaction_create.uid
+                    )
+                    return transaction
 
-        transaction = await Transaction.create(
-            type=transaction_type,
-            amount=amount,
-            timestamp=timestamp,
-            user_id=user_id,
-            uid=uid,
-        )
-        return transaction
+                # Execute transaction logic within atomic transaction
+                transaction = await transaction_logic(tx)
+                return transaction
+
+            except Exception as e:
+                logger.error(f"Error creating transaction: {e}")
+                return None
 
     @staticmethod
-    async def get_transaction(transaction_uid: str) -> Optional[Transaction]:
-        return await Transaction.query.where(
-            Transaction.uid == transaction_uid
-        ).gino.first()
-
-    async def get_user_transactions(
-        self, user_id: int, timestamp: Optional[str] = None
-    ) -> List[Transaction]:
-        timestamp = parse_timestamp(timestamp)
-        return (
-            await Transaction.query.where(Transaction.user_id == user_id)
-            .where(Transaction.timestamp < timestamp)
-            .gino.all()
-        )
+    async def get_transaction(transaction_uid: UUID) -> Optional[Transaction]:
+        return await TransactionCrud().get_transaction(transaction_uid)

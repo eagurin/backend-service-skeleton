@@ -6,7 +6,6 @@ __pycache__
 *.sqlite3
 *.log
 *.tmp
-.env
 .git
 .gitignore
 .vscode
@@ -14,7 +13,6 @@ __pycache__
 .pytest_cache
 .zip
 
-.env
 .venv
 env/
 venv/
